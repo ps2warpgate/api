@@ -2,7 +2,7 @@ import os
 import redis
 from dotenv import load_dotenv
 
-from config.utils import is_docker, log
+from config.utils import is_docker
 
 
 if is_docker() is False:  # Use .env file for secrets
