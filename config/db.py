@@ -17,12 +17,12 @@ REDIS_PASS = os.getenv('REDIS_PASS') or None
 
 
 def create_redis():
-  return redis.ConnectionPool(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    db=REDIS_DB,
-    password=REDIS_PASS,
-    decode_responses=True
-  )
+    return redis.ConnectionPool(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        db=REDIS_DB,
+        password=REDIS_PASS,
+        decode_responses=True
+    )
 
 pool = create_redis()

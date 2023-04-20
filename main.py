@@ -1,5 +1,6 @@
 import os
-import redis
+import redis.asyncio as redis
+import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -54,3 +55,12 @@ def read_world(world_id: int, cache = Depends(get_redis)):
         if WORLD_IDS[i] == world_id:
             world_data = cache.hgetall(i)
     return world_data
+
+
+@app.get("/health")
+def healthcheck():
+    return {"status": "UP"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
