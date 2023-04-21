@@ -1,5 +1,5 @@
 import os
-import redis.asyncio as redis
+import redis
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,7 +53,7 @@ def read_root():
 def read_world(world_id: int, cache = Depends(get_redis)):
     for i in WORLD_IDS:
         if WORLD_IDS[i] == world_id:
-            world_data = cache.hgetall(i)
+            world_data = cache.json().get(i)
     return world_data
 
 
