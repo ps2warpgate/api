@@ -33,12 +33,14 @@ def get_redis():
 app = FastAPI()
 
 origins = [
-    BASE_URL
+    BASE_URL,
+    '127.0.0.1'
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    # allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,10 +51,10 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
-@app.get("/worlds/{world_id}")
-def read_world(world_id: int, cache = Depends(get_redis)):
+@app.get("/worlds/")
+def read_world(id: int, cache = Depends(get_redis)):
     for i in WORLD_IDS:
-        if WORLD_IDS[i] == world_id:
+        if WORLD_IDS[i] == id:
             world_data = cache.json().get(i)
     return world_data
 
