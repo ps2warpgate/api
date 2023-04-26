@@ -13,8 +13,9 @@ if is_docker() is False:  # Use .env file for secrets
     load_dotenv()
 
 
-BASE_URL = os.getenv('BASE_URL') or '0.0.0.0'
+BASE_URL = os.getenv('BASE_URL') or None
 LOG_LEVEL = os.getenv('LOG_LEVEL') or 'INFO'
+VERSION = os.getenv('VERSION') or '1.0.0'
 
 WORLD_IDS = {
     'connery': 1,
@@ -30,7 +31,15 @@ def get_redis():
     return redis.Redis(connection_pool=pool)
 
 
-app = FastAPI()
+app = FastAPI(
+    title = "Warpgate API",
+    version = VERSION,
+    license_info = {
+        "name": "GNU General Public License v3.0",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+    },
+    root_path = BASE_URL
+)
 
 origins = [
     BASE_URL,
