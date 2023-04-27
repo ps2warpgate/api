@@ -1,5 +1,5 @@
 import os
-import redis.asyncio as redis
+import redis
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,8 +13,9 @@ if is_docker() is False:  # Use .env file for secrets
     load_dotenv()
 
 
-BASE_URL = os.getenv('BASE_URL') or '0.0.0.0'
+BASE_URL = os.getenv('BASE_URL') or None
 LOG_LEVEL = os.getenv('LOG_LEVEL') or 'INFO'
+VERSION = os.getenv('VERSION') or '1.0.0'
 
 WORLD_IDS = {
     'connery': 1,
@@ -30,15 +31,25 @@ def get_redis():
     return redis.Redis(connection_pool=pool)
 
 
-app = FastAPI()
+app = FastAPI(
+    title = "Warpgate API",
+    version = VERSION,
+    license_info = {
+        "name": "GNU General Public License v3.0",
+        "url": "https://www.gnu.org/licenses/gpl-3.0.html"
+    },
+    root_path = BASE_URL
+)
 
 origins = [
-    BASE_URL
+    BASE_URL,
+    '127.0.0.1'
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    # allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,11 +60,11 @@ app.add_middleware(
 def read_root():
     return {"Hello": "World"}
 
-@app.get("/worlds/{world_id}")
-def read_world(world_id: int, cache = Depends(get_redis)):
+@app.get("/worlds/")
+def read_world(id: int, cache = Depends(get_redis)):
     for i in WORLD_IDS:
-        if WORLD_IDS[i] == world_id:
-            world_data = cache.hgetall(i)
+        if WORLD_IDS[i] == id:
+            world_data = cache.json().get(i)
     return world_data
 
 
