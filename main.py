@@ -1,12 +1,13 @@
 import os
 import redis
 import uvicorn
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from config.utils import is_docker
 from config.db import pool
+from consumer import Consumer
 
 
 if is_docker() is False:  # Use .env file for secrets
@@ -16,6 +17,8 @@ if is_docker() is False:  # Use .env file for secrets
 BASE_URL = os.getenv('BASE_URL') or None
 LOG_LEVEL = os.getenv('LOG_LEVEL') or 'INFO'
 VERSION = os.getenv('VERSION') or '1.0.0'
+RABBITMQ_URL = os.getenv('RABBITMQ_URL') or None
+
 
 WORLD_IDS = {
     'connery': 1,
@@ -55,10 +58,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+consumer = Consumer()
+
+
+@app.on_event("startup")
+async def startup_event():
+    if not consumer.is_ready:
+        await consumer.setup(
+            rabbitmq_url=RABBITMQ_URL, 
+            queue_name='warpgate'
+        )
+
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
 
 @app.get("/worlds/")
 def read_world(id: int, cache = Depends(get_redis)):
@@ -71,6 +86,17 @@ def read_world(id: int, cache = Depends(get_redis)):
 @app.get("/health")
 def healthcheck():
     return {"status": "UP"}
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await consumer.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Message text was: {data}")
+    except WebSocketDisconnect:
+        consumer.remove(websocket)
 
 
 if __name__ == "__main__":
