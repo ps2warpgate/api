@@ -23,7 +23,7 @@ class Consumer:
         self.queue_name = queue_name
         queue = await self.channel.declare_queue(self.queue_name)
         await queue.bind(exchange=exchange, routing_key='metagame')
-        await queue.consume(self._send, no_ack=True)
+        await queue.consume(self._send)
         self.is_ready = True
 
     async def push(self, msg: str):
