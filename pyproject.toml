@@ -55,3 +55,30 @@ target-version = "py311"
 [tool.ruff.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
+
+
+
+[tool.poetry]
+name = "api"
+version = "0.1.0"
+description = ""
+authors = ["wupasscat <wupasscat10@gmail.com>"]
+license = "GNU General Public License v3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aio-pika = "^9.0.7"
+fastapi = "^0.95.2"
+uvicorn = {extras = ["standard"], version = "^0.22.0"}
+python-dotenv = "^1.0.0"
+motor = "^3.1.2"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.267"
+pytest = "^7.3.1"
+pre-commit = "^3.3.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
