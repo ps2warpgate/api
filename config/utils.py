@@ -2,11 +2,12 @@ import os
 from dotenv import load_dotenv
 import logging
 
+
 def is_docker() -> bool:
     path = '/proc/self/cgroup'
     return (
-        os.path.exists('/.dockerenv') or
-        os.path.isfile(path) and any('docker' in line for line in open(path))
+            os.path.exists('/.dockerenv') or
+            os.path.isfile(path) and any('docker' in line for line in open(path))
     )
 
 
@@ -14,6 +15,7 @@ if is_docker() is False:  # Use .env file for secrets if outside of a container
     load_dotenv()
 
 LOG_LEVEL = os.getenv('LOG_LEVEL') or 'INFO'
+
 
 class CustomFormatter(logging.Formatter):  # Formatter
 
@@ -38,4 +40,3 @@ class CustomFormatter(logging.Formatter):  # Formatter
         dt_fmt = '%m/%d/%Y %I:%M:%S'
         formatter = logging.Formatter(log_fmt, dt_fmt)
         return formatter.format(record)
-

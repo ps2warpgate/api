@@ -1,13 +1,15 @@
 import os
-import redis
+import asyncio
 import uvicorn
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from fastapi_health import health
+from pymongo.errors import ServerSelectionTimeoutError
 from dotenv import load_dotenv
 
 from config.utils import is_docker
-from config.db import pool, get_mongo
+from config.db import get_mongo
 from consumer import Consumer
 
 if is_docker() is False:  # Use .env file for secrets
@@ -18,7 +20,6 @@ LOG_LEVEL = os.getenv('LOG_LEVEL') or 'INFO'
 VERSION = os.getenv('VERSION') or '1.0.0'
 RABBITMQ_URL = os.getenv('RABBITMQ_URL') or None
 MONGODB_DB = os.getenv('MONGODB_DB', 'warpgate')
-MONGODB_COLLECTION = os.getenv('MONGODB_COLLECTION', 'alerts')
 
 WORLD_IDS = {
     'connery': 1,
@@ -30,8 +31,12 @@ WORLD_IDS = {
 }
 
 
-def get_redis():
-    return redis.Redis(connection_pool=pool)
+async def is_mongo_alive(client: AsyncIOMotorClient = Depends(get_mongo)):
+    try:
+        await asyncio.wait_for(client.server_info(), timeout=30)
+    except (ServerSelectionTimeoutError, TimeoutError):
+        return False
+    return True
 
 
 app = FastAPI(
@@ -75,31 +80,46 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/worlds/")
-def read_world(id: int, cache=Depends(get_redis)):
-    for i in WORLD_IDS:
-        if WORLD_IDS[i] == id:
-            world_data = cache.json().get(i)
-            return world_data
+@app.get("/zones/")
+async def get_zone_status(world_id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
+    db = client[MONGODB_DB]
+    if world_id:
+        response = await db.continents.find_one({'world_id': world_id}, {'_id': False})
+        return response
+    else:
+        cursor = db.continents.find({}, {'_id': False})
+        response = []
+        for i in await cursor.to_list(length=6):
+            response.append(i)
+        return response
+
+
+@app.get("/population/")
+async def get_population(world_id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
+    db = client[MONGODB_DB]
+    if world_id:
+        response = await db.population.find_one({'world_id': world_id}, {'_id': False})
+        return response
+    else:
+        cursor = db.population.find({}, {'_id': False})
+        response = []
+        for i in await cursor.to_list(length=6):
+            response.append(i)
+        return response
 
 
 @app.get("/alerts/")
-async def get_alerts(id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
+async def get_alerts(world_id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
     db = client[MONGODB_DB]
-    alert_collection = db[MONGODB_COLLECTION]
-    if id:
-        cursor = alert_collection.find({'world_id': id})
+    alert_collection = db.alerts
+    if world_id:
+        cursor = alert_collection.find({'world_id': world_id}, {'_id': False})
     else:
-        cursor = alert_collection.find()
+        cursor = alert_collection.find({}, {'_id': False})
     response = []
     for i in await cursor.to_list(length=30):
         response.append(i)
     return response
-
-
-@app.get("/health")
-def healthcheck():
-    return {"status": "UP"}
 
 
 @app.websocket("/ws")
@@ -111,6 +131,9 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_text(f"Message text was: {data}")
     except WebSocketDisconnect:
         consumer.remove(websocket)
+
+
+app.add_api_route("/health", health([is_mongo_alive]))
 
 
 if __name__ == "__main__":
