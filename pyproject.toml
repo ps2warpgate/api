@@ -60,7 +60,7 @@ max-complexity = 10
 
 [tool.poetry]
 name = "api"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["wupasscat <wupasscat10@gmail.com>"]
 license = "GNU General Public License v3.0"
