@@ -1,13 +1,12 @@
 import os
-import asyncio
 import uvicorn
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
-from fastapi_health import health
-from pymongo.errors import ServerSelectionTimeoutError
 from dotenv import load_dotenv
+from enum import IntEnum
 
+from constants.models import MetagameEvent, WorldPopulation, WorldZones
 from config.utils import is_docker
 from config.db import get_mongo
 from consumer import Consumer
@@ -31,12 +30,13 @@ WORLD_IDS = {
 }
 
 
-async def is_mongo_alive(client: AsyncIOMotorClient = Depends(get_mongo)):
-    try:
-        await asyncio.wait_for(client.server_info(), timeout=30)
-    except (ServerSelectionTimeoutError, TimeoutError):
-        return False
-    return True
+class WorldIds(IntEnum):
+    connery = 1
+    miller = 10
+    cobalt = 13
+    emerald = 17
+    jaeger = 19
+    soltech = 40
 
 
 app = FastAPI(
@@ -81,7 +81,9 @@ def read_root():
 
 
 @app.get("/zones/")
-async def get_zone_status(world_id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
+async def get_zone_status(
+        world_id: WorldIds = None,
+        client: AsyncIOMotorClient = Depends(get_mongo)) -> WorldZones | list[WorldZones]:
     db = client[MONGODB_DB]
     if world_id:
         response = await db.continents.find_one({'world_id': world_id}, {'_id': False})
@@ -95,7 +97,9 @@ async def get_zone_status(world_id: int = None, client: AsyncIOMotorClient = Dep
 
 
 @app.get("/population/")
-async def get_population(world_id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
+async def get_population(
+        world_id: WorldIds = None,
+        client: AsyncIOMotorClient = Depends(get_mongo)) -> WorldPopulation | list[WorldPopulation]:
     db = client[MONGODB_DB]
     if world_id:
         response = await db.population.find_one({'world_id': world_id}, {'_id': False})
@@ -109,7 +113,9 @@ async def get_population(world_id: int = None, client: AsyncIOMotorClient = Depe
 
 
 @app.get("/alerts/")
-async def get_alerts(world_id: int = None, client: AsyncIOMotorClient = Depends(get_mongo)):
+async def get_alerts(
+        world_id: WorldIds = None,
+        client: AsyncIOMotorClient = Depends(get_mongo)) -> list[MetagameEvent]:
     db = client[MONGODB_DB]
     alert_collection = db.alerts
     if world_id:
@@ -131,9 +137,6 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_text(f"Message text was: {data}")
     except WebSocketDisconnect:
         consumer.remove(websocket)
-
-
-app.add_api_route("/health", health([is_mongo_alive]))
 
 
 if __name__ == "__main__":

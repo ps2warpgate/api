@@ -11,7 +11,7 @@ def is_docker() -> bool:
     )
 
 
-if is_docker() is False:  # Use .env file for secrets if outside of a container
+if is_docker() is False:  # Use .env file for secrets if outside a container
     load_dotenv()
 
 LOG_LEVEL = os.getenv('LOG_LEVEL') or 'INFO'
