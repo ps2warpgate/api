@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from enum import IntEnum
-from pydantic.dataclasses import dataclass
 
 from constants.models import MetagameEvent, WorldZones
 from config.utils import is_docker
@@ -39,22 +38,6 @@ class WorldId(IntEnum):
     emerald = 17
     jaeger = 19
     soltech = 40
-
-
-@dataclass
-class Zones:
-    amerish: int
-    esamir: int
-    hossin: int
-    indar: int
-    oshur: int
-
-
-@dataclass
-class World:
-    id: WorldId
-    total: int
-    zones: Zones
 
 
 app = FastAPI(
