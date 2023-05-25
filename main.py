@@ -127,7 +127,6 @@ async def get_population(world_id: WorldId = None, client: AsyncIOMotorClient = 
     zones = {2: 0, 4: 0, 6: 0, 8: 0, 344: 0}
     async for event in db.realtime.find(query_filter, {'_id': False}):
         zone_id = event['metadata']['zone_id']
-        print(zone_id)
         if event['attacker_id'] not in players:
             players.append(event['attacker_id'])
             if zone_id in zones:
@@ -174,4 +173,4 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
