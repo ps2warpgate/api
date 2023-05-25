@@ -1,12 +1,14 @@
 import os
 import uvicorn
+from datetime import datetime, timedelta
 from fastapi import Depends, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 from enum import IntEnum
+from pydantic.dataclasses import dataclass
 
-from constants.models import MetagameEvent, WorldPopulation, WorldZones
+from constants.models import MetagameEvent, WorldZones
 from config.utils import is_docker
 from config.db import get_mongo
 from consumer import Consumer
@@ -30,13 +32,29 @@ WORLD_IDS = {
 }
 
 
-class WorldIds(IntEnum):
+class WorldId(IntEnum):
     connery = 1
     miller = 10
     cobalt = 13
     emerald = 17
     jaeger = 19
     soltech = 40
+
+
+@dataclass
+class Zones:
+    amerish: int
+    esamir: int
+    hossin: int
+    indar: int
+    oshur: int
+
+
+@dataclass
+class World:
+    id: WorldId
+    total: int
+    zones: Zones
 
 
 app = FastAPI(
@@ -82,7 +100,7 @@ def read_root():
 
 @app.get("/zones/")
 async def get_zone_status(
-        world_id: WorldIds = None,
+        world_id: WorldId = None,
         client: AsyncIOMotorClient = Depends(get_mongo)) -> WorldZones | list[WorldZones]:
     db = client[MONGODB_DB]
     if world_id:
@@ -97,24 +115,40 @@ async def get_zone_status(
 
 
 @app.get("/population/")
-async def get_population(
-        world_id: WorldIds = None,
-        client: AsyncIOMotorClient = Depends(get_mongo)) -> WorldPopulation | list[WorldPopulation]:
+async def get_population(world_id: WorldId = None, client: AsyncIOMotorClient = Depends(get_mongo)):
     db = client[MONGODB_DB]
+    now = datetime.utcnow()
+    delta = timedelta(seconds=1200)
     if world_id:
-        response = await db.population.find_one({'world_id': world_id}, {'_id': False})
-        return response
+        query_filter = {'metadata.world_id': world_id, 'timestamp': {'$gt': now - delta}}
     else:
-        cursor = db.population.find({}, {'_id': False})
-        response = []
-        for i in await cursor.to_list(length=6):
-            response.append(i)
-        return response
+        query_filter = {'timestamp': {'$gt': now - delta}}
+    players = []
+    zones = {2: 0, 4: 0, 6: 0, 8: 0, 344: 0}
+    async for event in db.realtime.find(query_filter, {'_id': False}):
+        zone_id = event['metadata']['zone_id']
+        print(zone_id)
+        if event['attacker_id'] not in players:
+            players.append(event['attacker_id'])
+            if zone_id in zones:
+                zones[zone_id] += 1
+        if event['victim_id'] not in players:
+            players.append(event['victim_id'])
+            if zone_id in zones:
+                zones[zone_id] += 1
+
+    response = {
+        'total': len(players),
+    }
+    if world_id:
+        response.update({'zones': zones})
+
+    return response
 
 
 @app.get("/alerts/")
 async def get_alerts(
-        world_id: WorldIds = None,
+        world_id: WorldId = None,
         client: AsyncIOMotorClient = Depends(get_mongo)) -> list[MetagameEvent]:
     db = client[MONGODB_DB]
     alert_collection = db.alerts

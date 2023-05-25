@@ -1,5 +1,13 @@
 # api
-Basic API for the data collected by [ps2warpgate/aggregator](https://github.com/ps2warpgate/aggregator)  
+## Features
+- `/zones` Zone/continent states
+- `/alerts` In-progress alerts
+- `/population` World and zone population
+- `/ws` Websocket for realtime alerts (beta)
+
+See `/docs` for OpenAPI documentation
+***
+
 ## Run
 Quick start: `uvicorn main:app --reload`  
 ### Docker:
