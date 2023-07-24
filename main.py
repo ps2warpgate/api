@@ -106,18 +106,28 @@ async def get_population(world_id: WorldId = None, client: AsyncIOMotorClient = 
         query_filter = {'metadata.world_id': world_id, 'timestamp': {'$gt': now - delta}}
     else:
         query_filter = {'timestamp': {'$gt': now - delta}}
-    players = []
-    zones = {2: 0, 4: 0, 6: 0, 8: 0, 344: 0}
+    players = set()
+    zone_sets = {
+        2: set(),
+        4: set(),
+        6: set(),
+        8: set(),
+        344: set()
+    }
     async for event in db.realtime.find(query_filter, {'_id': False}):
         zone_id = event['metadata']['zone_id']
-        if event['attacker_id'] not in players:
-            players.append(event['attacker_id'])
-            if zone_id in zones:
-                zones[zone_id] += 1
-        if event['victim_id'] not in players:
-            players.append(event['victim_id'])
-            if zone_id in zones:
-                zones[zone_id] += 1
+
+        players.add(event['attacker_id'])
+        players.add(event['victim_id'])
+
+        if zone_id in zone_sets:
+            zone_sets[zone_id].add(event['attacker_id'])
+            zone_sets[zone_id].add(event['victim_id'])
+
+    zones = {2: 0, 4: 0, 6: 0, 8: 0, 344: 0}
+
+    for k, k2 in zip(zones, zone_sets):
+        zones[k] = len(zone_sets[k2])
 
     response = {
         'total': len(players),
